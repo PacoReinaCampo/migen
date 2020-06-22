@@ -1,0 +1,3 @@
+sudo rm -rf build
+sudo rm -rf dist
+sudo rm -rf migen.egg-info
