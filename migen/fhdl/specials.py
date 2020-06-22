@@ -358,11 +358,21 @@ class Memory(Special):
                         m = i*port.we_granularity
                         M = (i+1)*port.we_granularity-1
                         sl = "[" + str(M) + ":" + str(m) + "]"
-                        r += "\tif (" + gn(port.we) + "[" + str(i) + "])\n"
+                        r += "\tif (" + gn(port.we) + "[" + str(i) + "]) begin\n"
                         r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "]" + sl + " <= " + gn(port.dat_w) + sl + ";\n"
+                        r += "\t\t" + gn(port.ack) + " <= 1'b1;\n"
+                        r += "\tend\n"
+                        r += "\telse begin\n"
+                        r += "\t\t" + gn(port.ack) + " <= 1'b0;\n"
+                        r += "\tend\n"
                 else:
-                    r += "\tif (" + gn(port.we) + ")\n"
+                    r += "\tif (" + gn(port.we) + ") begin\n"
                     r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "] <= " + gn(port.dat_w) + ";\n"
+                    r += "\t\t" + gn(port.ack) + " <= 1'b1;\n"
+                    r += "\tend\n"
+                    r += "\telse begin\n"
+                    r += "\t\t" + gn(port.ack) + " <= 1'b0;\n"
+                    r += "\tend\n"
             if not port.async_read:
                 if port.mode == WRITE_FIRST:
                     rd = "\t" + gn(adr_regs[id(port)]) + " <= " + gn(port.adr) + ";\n"
@@ -383,17 +393,14 @@ class Memory(Special):
         for port in memory.ports:
             if port.async_read:
                 r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(port.adr) + "];\n"
-                r += "assign " + gn(port.ack) + " = " + gn(memory) + "[" + gn(port.adr) + "];\n"
-                r += "assign " + gn(port.error) + " = " + gn(memory) + "[" + gn(port.adr) + "];\n"
+                r += "assign " + gn(port.error) + " = 1'b0;\n"
             else:
                 if port.mode == WRITE_FIRST:
                     r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(adr_regs[id(port)]) + "];\n"
-                    r += "assign " + gn(port.ack) + " = " + gn(memory) + "[" + gn(adr_regs[id(port)]) + "];\n"
-                    r += "assign " + gn(port.error) + " = " + gn(memory) + "[" + gn(adr_regs[id(port)]) + "];\n"
+                    r += "assign " + gn(port.error) + " = 1'b0;\n"
                 else:
                     r += "assign " + gn(port.dat_r) + " = " + gn(data_regs[id(port)]) + ";\n"
-                    r += "assign " + gn(port.ack) + " = " + gn(data_regs[id(port)]) + ";\n"
-                    r += "assign " + gn(port.error) + " = " + gn(data_regs[id(port)]) + ";\n"
+                    r += "assign " + gn(port.error) + " = 1'b0;\n"
         r += "\n"
 
         if memory.init is not None:
