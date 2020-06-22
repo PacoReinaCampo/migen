@@ -8,7 +8,7 @@ class mem(Module):
         self.specials.mem = Memory(32, 100, init=list(range(20)))
         p1 = self.mem.get_port(write_capable=True)
         self.specials += p1
-        self.ios = {p1.adr, p1.dat_r, p1.we, p1.dat_w}
+        self.ios = {p1.m2s_addr, p1.s2m_data, p1.s2m_ack, p1.s2m_error, p1.m2s_we, p1.m2s_data}
 
 
 def master(dut):
@@ -18,7 +18,7 @@ def master(dut):
     # remember: values are written after the tick, and read before the tick.
     # wait one tick for the memory to update.
     yield
-    # read what we have written, plus some initialization data
+    # read what m2s_we have written, plus some initialization data
     for i in range(10):
         value = yield dut.mem[i]
         print(value)

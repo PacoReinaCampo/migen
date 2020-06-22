@@ -239,27 +239,31 @@ class Instance(Special):
 
 
 class _MemoryPort(Special):
-    def __init__(self, adr, dat_r, we=None, dat_w=None,
-      async_read=False, re=None, we_granularity=0, mode=WRITE_FIRST,
+    def __init__(self, m2s_addr, s2m_data, s2m_ack, s2m_error, m2s_we=None, m2s_data=None,
+      async_read=False, re=None, m2s_we_granularity=0, mode=WRITE_FIRST,
       clock_domain="sys"):
         Special.__init__(self)
-        self.adr = adr
-        self.dat_r = dat_r
-        self.we = we
-        self.dat_w = dat_w
+        self.m2s_addr = m2s_addr
+        self.s2m_data = s2m_data
+        self.s2m_ack = s2m_ack
+        self.s2m_error = s2m_error
+        self.m2s_we = m2s_we
+        self.m2s_data = m2s_data
         self.async_read = async_read
         self.re = re
-        self.we_granularity = we_granularity
+        self.m2s_we_granularity = m2s_we_granularity
         self.mode = mode
         self.clock = ClockSignal(clock_domain)
 
     def iter_expressions(self):
         for attr, target_context in [
-          ("adr", SPECIAL_INPUT),
-          ("we", SPECIAL_INPUT),
-          ("dat_w", SPECIAL_INPUT),
+          ("m2s_addr", SPECIAL_INPUT),
+          ("m2s_we", SPECIAL_INPUT),
+          ("m2s_data", SPECIAL_INPUT),
           ("re", SPECIAL_INPUT),
-          ("dat_r", SPECIAL_OUTPUT),
+          ("s2m_data", SPECIAL_OUTPUT),
+          ("s2m_ack", SPECIAL_OUTPUT),
+          ("s2m_error", SPECIAL_OUTPUT),
           ("clock", SPECIAL_INPUT)]:
             yield self, attr, target_context
 
@@ -289,27 +293,29 @@ class Memory(Special):
         return _MemoryLocation(self, index)
 
     def get_port(self, write_capable=False, async_read=False,
-      has_re=False, we_granularity=0, mode=WRITE_FIRST,
+      has_re=False, m2s_we_granularity=0, mode=WRITE_FIRST,
       clock_domain="sys"):
-        if we_granularity >= self.width:
-            we_granularity = 0
-        adr = Signal(max=self.depth)
-        dat_r = Signal(self.width)
+        if m2s_we_granularity >= self.width:
+            m2s_we_granularity = 0
+        m2s_addr = Signal(max=self.depth)
+        s2m_data = Signal(self.width)
+        s2m_ack = Signal()
+        s2m_error = Signal()
         if write_capable:
-            if we_granularity:
-                we = Signal(self.width//we_granularity)
+            if m2s_we_granularity:
+                m2s_we = Signal(self.width//m2s_we_granularity)
             else:
-                we = Signal()
-            dat_w = Signal(self.width)
+                m2s_we = Signal()
+            m2s_data = Signal(self.width)
         else:
-            we = None
-            dat_w = None
+            m2s_we = None
+            m2s_data = None
         if has_re:
             re = Signal()
         else:
             re = None
-        mp = _MemoryPort(adr, dat_r, we, dat_w,
-          async_read, re, we_granularity, mode,
+        mp = _MemoryPort(m2s_addr, s2m_data, s2m_ack, s2m_error, m2s_we, m2s_data,
+          async_read, re, m2s_we_granularity, mode,
           clock_domain)
         self.ports.append(mp)
         return mp
@@ -328,15 +334,15 @@ class Memory(Special):
             + gn(memory) \
             + "[0:" + str(memory.depth-1) + "];\n"
 
-        adr_regs = {}
+        m2s_addr_regs = {}
         data_regs = {}
         for port in memory.ports:
             if not port.async_read:
                 if port.mode == WRITE_FIRST:
-                    adr_reg = Signal(name_override="memadr")
+                    m2s_addr_reg = Signal(name_override="memadr")
                     r += "reg [" + str(adrbits-1) + ":0] " \
-                        + gn(adr_reg) + ";\n"
-                    adr_regs[id(port)] = adr_reg
+                        + gn(m2s_addr_reg) + ";\n"
+                    m2s_addr_regs[id(port)] = m2s_addr_reg
                 else:
                     data_reg = Signal(name_override="memdat")
                     r += "reg [" + str(memory.width-1) + ":0] " \
@@ -345,27 +351,27 @@ class Memory(Special):
 
         for port in memory.ports:
             r += "always @(posedge " + gn(port.clock) + ") begin\n"
-            if port.we is not None:
-                if port.we_granularity:
-                    n = memory.width//port.we_granularity
+            if port.m2s_we is not None:
+                if port.m2s_we_granularity:
+                    n = memory.width//port.m2s_we_granularity
                     for i in range(n):
-                        m = i*port.we_granularity
-                        M = (i+1)*port.we_granularity-1
+                        m = i*port.m2s_we_granularity
+                        M = (i+1)*port.m2s_we_granularity-1
                         sl = "[" + str(M) + ":" + str(m) + "]"
-                        r += "\tif (" + gn(port.we) + "[" + str(i) + "])\n"
-                        r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "]" + sl + " <= " + gn(port.dat_w) + sl + ";\n"
+                        r += "\tif (" + gn(port.m2s_we) + "[" + str(i) + "])\n"
+                        r += "\t\t" + gn(memory) + "[" + gn(port.m2s_addr) + "]" + sl + " <= " + gn(port.m2s_data) + sl + ";\n"
                 else:
-                    r += "\tif (" + gn(port.we) + ")\n"
-                    r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "] <= " + gn(port.dat_w) + ";\n"
+                    r += "\tif (" + gn(port.m2s_we) + ")\n"
+                    r += "\t\t" + gn(memory) + "[" + gn(port.m2s_addr) + "] <= " + gn(port.m2s_data) + ";\n"
             if not port.async_read:
                 if port.mode == WRITE_FIRST:
-                    rd = "\t" + gn(adr_regs[id(port)]) + " <= " + gn(port.adr) + ";\n"
+                    rd = "\t" + gn(m2s_addr_regs[id(port)]) + " <= " + gn(port.m2s_addr) + ";\n"
                 else:
-                    bassign = gn(data_regs[id(port)]) + " <= " + gn(memory) + "[" + gn(port.adr) + "];\n"
+                    bassign = gn(data_regs[id(port)]) + " <= " + gn(memory) + "[" + gn(port.m2s_addr) + "];\n"
                     if port.mode == READ_FIRST:
                         rd = "\t" + bassign
                     elif port.mode == NO_CHANGE:
-                        rd = "\tif (!" + gn(port.we) + ")\n" \
+                        rd = "\tif (!" + gn(port.m2s_we) + ")\n" \
                           + "\t\t" + bassign
                 if port.re is None:
                     r += rd
@@ -376,12 +382,18 @@ class Memory(Special):
 
         for port in memory.ports:
             if port.async_read:
-                r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(port.adr) + "];\n"
+                r += "assign " + gn(port.s2m_data) + " = " + gn(memory) + "[" + gn(port.m2s_addr) + "];\n"
+                r += "assign " + gn(port.s2m_ack) + " = " + gn(memory) + "[" + gn(port.m2s_addr) + "];\n"
+                r += "assign " + gn(port.s2m_error) + " = " + gn(memory) + "[" + gn(port.m2s_addr) + "];\n"
             else:
                 if port.mode == WRITE_FIRST:
-                    r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(adr_regs[id(port)]) + "];\n"
+                    r += "assign " + gn(port.s2m_data) + " = " + gn(memory) + "[" + gn(m2s_addr_regs[id(port)]) + "];\n"
+                    r += "assign " + gn(port.s2m_ack) + " = " + gn(memory) + "[" + gn(m2s_addr_regs[id(port)]) + "];\n"
+                    r += "assign " + gn(port.s2m_error) + " = " + gn(memory) + "[" + gn(m2s_addr_regs[id(port)]) + "];\n"
                 else:
-                    r += "assign " + gn(port.dat_r) + " = " + gn(data_regs[id(port)]) + ";\n"
+                    r += "assign " + gn(port.s2m_data) + " = " + gn(data_regs[id(port)]) + ";\n"
+                    r += "assign " + gn(port.s2m_ack) + " = " + gn(data_regs[id(port)]) + ";\n"
+                    r += "assign " + gn(port.s2m_error) + " = " + gn(data_regs[id(port)]) + ";\n"
         r += "\n"
 
         if memory.init is not None:
