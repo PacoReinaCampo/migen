@@ -1,6 +1,14 @@
 from migen import *
 
 
+# adr   <=> m2s_addr
+# dat_r <=> s2m_data
+# ack   <=> s2m_ack
+# error <=> s2m_error
+# we    <=> m2s_we
+# dat_w <=> m2s_data
+
+
 class mem(Module):
     def __init__(self):
         # Initialize the beginning of the memory with integers

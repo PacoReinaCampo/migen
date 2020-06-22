@@ -2,6 +2,14 @@ from migen import *
 from migen.fhdl import verilog
 
 
+# adr   <=> m2s_addr
+# dat_r <=> s2m_data
+# ack   <=> s2m_ack
+# error <=> s2m_error
+# we    <=> m2s_we
+# dat_w <=> m2s_data
+
+
 class Example(Module):
     def __init__(self):
         self.specials.mem = Memory(32, 100, init=list(range(20)))
