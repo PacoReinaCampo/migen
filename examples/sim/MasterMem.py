@@ -35,20 +35,15 @@ class Mem(Module):
 
 # MASTER
 def Master(dut):
-    # Writing to Memory
     for i in range(16):
+        # Writing to Memory
         yield dut.m2s_we.eq(1)
         yield dut.m2s_addr.eq(i)
-        yield dut.m2s_data.eq(2*i+1)
-
-    # Update
-    yield
-
-    # Reading from Memory
-    for i in range(4):
-        yield dut.m2s_addr.eq(i)
-        print("ADDRESS: {} DATA: {}".format((yield dut.m2s_addr[i]), (yield dut.s2m_data[i])))
+        yield dut.m2s_data.eq(i+1)
         yield
+
+        # Reading from Memory
+        print("ADDRESS: {}; DATA: {}; ACK: {}".format((yield dut.m2s_addr), (yield dut.s2m_data), (yield dut.s2m_ack)))
 
 
 # SYNTHESIS
