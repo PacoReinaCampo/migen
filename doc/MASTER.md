@@ -1,6 +1,38 @@
 # 1. INTRODUCTION
 
+Download Migen:
+```
+git clone https://github.com/PacoReinaCampo/migen
+```
+
+Install Migen:
+```
+cd migen
+source INSTALL-IT-IT
+```
+
+Synthesize the work:
+```
+cd migen/examples/basic
+source TEST-IT
+```
+
+Simulate the work:
+```
+cd migen/examples/sim
+source TEST-IT
+```
+
 # 2. PROJECTS
+
+```
+adr   <=> m2s_addr
+dat_r <=> s2m_data
+ack   <=> s2m_ack
+error <=> s2m_error
+we    <=> m2s_we
+dat_w <=> m2s_data
+```
 
 ```
   module top(
