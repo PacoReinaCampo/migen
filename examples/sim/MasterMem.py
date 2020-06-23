@@ -47,8 +47,7 @@ def Master(dut):
     # Reading from Memory
     for i in range(4):
         yield dut.m2s_addr.eq(i)
-        value = yield dut.s2m_data[i]
-        print(value)
+        print("ADDRESS: {} DATA: {}".format((yield dut.m2s_addr[i]), (yield dut.s2m_data[i])))
         yield
 
 
