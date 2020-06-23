@@ -239,14 +239,12 @@ class Instance(Special):
 
 
 class _MemoryPort(Special):
-    def __init__(self, adr, dat_r, ack, error, we=None, dat_w=None,
+    def __init__(self, adr, dat_r, we=None, dat_w=None,
       async_read=False, re=None, we_granularity=0, mode=WRITE_FIRST,
       clock_domain="sys"):
         Special.__init__(self)
         self.adr = adr
         self.dat_r = dat_r
-        self.ack = ack
-        self.error = error
         self.we = we
         self.dat_w = dat_w
         self.async_read = async_read
@@ -262,8 +260,6 @@ class _MemoryPort(Special):
           ("dat_w", SPECIAL_INPUT),
           ("re", SPECIAL_INPUT),
           ("dat_r", SPECIAL_OUTPUT),
-          ("ack", SPECIAL_OUTPUT),
-          ("error", SPECIAL_OUTPUT),
           ("clock", SPECIAL_INPUT)]:
             yield self, attr, target_context
 
@@ -299,8 +295,6 @@ class Memory(Special):
             we_granularity = 0
         adr = Signal(max=self.depth)
         dat_r = Signal(self.width)
-        ack = Signal()
-        error = Signal()
         if write_capable:
             if we_granularity:
                 we = Signal(self.width//we_granularity)
@@ -314,7 +308,7 @@ class Memory(Special):
             re = Signal()
         else:
             re = None
-        mp = _MemoryPort(adr, dat_r, ack, error, we, dat_w,
+        mp = _MemoryPort(adr, dat_r, we, dat_w,
           async_read, re, we_granularity, mode,
           clock_domain)
         self.ports.append(mp)
@@ -358,21 +352,11 @@ class Memory(Special):
                         m = i*port.we_granularity
                         M = (i+1)*port.we_granularity-1
                         sl = "[" + str(M) + ":" + str(m) + "]"
-                        r += "\tif (" + gn(port.we) + "[" + str(i) + "]) begin\n"
+                        r += "\tif (" + gn(port.we) + "[" + str(i) + "])\n"
                         r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "]" + sl + " <= " + gn(port.dat_w) + sl + ";\n"
-                        r += "\t\t" + gn(port.ack) + " <= 1'b1;\n"
-                        r += "\tend\n"
-                        r += "\telse begin\n"
-                        r += "\t\t" + gn(port.ack) + " <= 1'b0;\n"
-                        r += "\tend\n"
                 else:
-                    r += "\tif (" + gn(port.we) + ") begin\n"
+                    r += "\tif (" + gn(port.we) + ")\n"
                     r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "] <= " + gn(port.dat_w) + ";\n"
-                    r += "\t\t" + gn(port.ack) + " <= 1'b1;\n"
-                    r += "\tend\n"
-                    r += "\telse begin\n"
-                    r += "\t\t" + gn(port.ack) + " <= 1'b0;\n"
-                    r += "\tend\n"
             if not port.async_read:
                 if port.mode == WRITE_FIRST:
                     rd = "\t" + gn(adr_regs[id(port)]) + " <= " + gn(port.adr) + ";\n"
@@ -393,14 +377,11 @@ class Memory(Special):
         for port in memory.ports:
             if port.async_read:
                 r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(port.adr) + "];\n"
-                r += "assign " + gn(port.error) + " = 1'b0;\n"
             else:
                 if port.mode == WRITE_FIRST:
                     r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(adr_regs[id(port)]) + "];\n"
-                    r += "assign " + gn(port.error) + " = 1'b0;\n"
                 else:
                     r += "assign " + gn(port.dat_r) + " = " + gn(data_regs[id(port)]) + ";\n"
-                    r += "assign " + gn(port.error) + " = 1'b0;\n"
         r += "\n"
 
         if memory.init is not None:
