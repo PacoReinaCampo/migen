@@ -21,13 +21,14 @@ class mem(Module):
 
 def master(dut):
     # write (only first 5 values)
-    for i in range(5):
-        yield dut.mem[i].eq(2*i+1)
+    for i in range(100):
+        yield dut.mem[i].eq(5*i)
     # remember: values are written after the tick, and read before the tick.
     # wait one tick for the memory to update.
     yield
+    print("Read memory..")
     # read what we have written, plus some initialization data
-    for i in range(10):
+    for i in range(100):
         value = yield dut.mem[i]
         print("[Data: {}, Address: {}]".format(value, i))
 
