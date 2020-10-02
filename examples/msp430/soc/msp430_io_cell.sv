@@ -9,9 +9,8 @@
 //                  |_|                                                       //
 //                                                                            //
 //                                                                            //
-//              MPSoC-OR1K CPU                                                //
+//              MSP430 CPU                                                    //
 //              Processing Unit                                               //
-//              Wishbone Bus Interface                                        //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,42 +39,22 @@
  *   Paco Reina Campo <pacoreinacampo@queenfield.tech>
  */
 
-`include "or1k_defines.sv"
+module  msp430_io_cell (
+  // INOUTs
+  inout          pad,            // I/O Pad
 
-module or1k_wb_mux_cappuccino #(
-  parameter OPTION_OPERAND_WIDTH = 32
-)
-  (
-    input 			      clk,
-    input 			      rst,
+  // OUTPUTs
+  output         data_in,        // Input value
 
-    input  [OPTION_OPERAND_WIDTH-1:0] alu_result_i,
-    input  [OPTION_OPERAND_WIDTH-1:0] lsu_result_i,
-    input  [OPTION_OPERAND_WIDTH-1:0] mul_result_i,
-    input  [OPTION_OPERAND_WIDTH-1:0] spr_i,
+  // INPUTs
+  input          data_out_en,    // Output enable
+  input          data_out        // Output value
+);
 
-    output [OPTION_OPERAND_WIDTH-1:0] rf_result_o,
+  //=============================================================================
+  // 1)  I/O CELL
+  //=============================================================================
 
-    input 			      op_mul_i,
-    input 			      op_lsu_load_i,
-    input 			      op_mfspr_i
-  );
-
-  reg      [OPTION_OPERAND_WIDTH-1:0] rf_result;
-  reg 				      wb_op_mul;
-
-  assign rf_result_o = wb_op_mul ? mul_result_i : rf_result;
-
-  always @(posedge clk) begin
-    if (op_mfspr_i)
-      rf_result <= spr_i;
-    else if (op_lsu_load_i)
-      rf_result <= lsu_result_i;
-    else
-      rf_result <= alu_result_i;
-  end
-
-  always @(posedge clk) begin
-    wb_op_mul <= op_mul_i;
-  end
-endmodule
+  assign  data_in  =  pad;
+  assign  pad      =  data_out_en ? data_out : 1'bz;
+endmodule // io_cell
