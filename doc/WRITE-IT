@@ -1,2 +1,0 @@
-rm -f *.pdf
-pandoc MasterMem.md -s -o MasterMem.pdf
